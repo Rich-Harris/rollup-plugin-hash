@@ -25,8 +25,13 @@ function hasTemplate(dest) {
 	return /\[hash\]/.test(dest);
 }
 
-function generateManifest(input, output) {
-	return JSON.stringify({[input]: output});
+function tryRequire(file) {
+	try {
+		return JSON.parse(fs.readFileSync(file, 'utf-8'));
+	} catch (err) {
+		if (err.code === 'ENOENT') return null;
+		throw err;
+	}
 }
 
 function formatFilename(dest, hash) {
@@ -84,9 +89,10 @@ export default function hash(opts = {}) {
 			}
 
 			if(options.manifest) {
-				const manifest = generateManifest(options.manifestKey || builtFile, fileName);
+				const manifest = tryRequire(options.manifest) || {};
+				manifest[options.manifestKey || builtFile] = fileName;
 				mkdirpath(options.manifest);
-				fs.writeFileSync(options.manifest, manifest, 'utf8');
+				fs.writeFileSync(options.manifest, JSON.stringify(manifest), 'utf8');
 			}
 
 			mkdirpath(fileName);

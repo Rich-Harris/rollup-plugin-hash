@@ -44,6 +44,10 @@ function rmDirectoryRecursive(path) {
 	}
 };
 
+function readJson(file) {
+	return JSON.parse(fs.readFileSync(file, 'utf-8'));
+}
+
 describe('rollup-plugin-hash', () => {
 
 	afterEach(() => {
@@ -111,7 +115,7 @@ describe('rollup-plugin-hash', () => {
 		const res = hashWithOptions({ dest: 'tmp/[hash].js', manifest: 'tmp/manifest.json' });
 		return res.then(() => {
 			const tmp = fs.readdirSync('tmp');
-			const manifest = require('./tmp/manifest.json');
+			const manifest = readJson('tmp/manifest.json');
 			expect(tmp).to.contain(results.manifest);
 			expect(manifest).to.be.an('object');
 			expect(manifest).to.have.property('tmp/index.js');
@@ -123,11 +127,25 @@ describe('rollup-plugin-hash', () => {
 		const res = hashWithOptions({ manifestKey: 'custom/dir/index.js', dest: 'tmp/[hash].js', manifest: 'tmp/manifestCustomInput.json' });
 		return res.then(() => {
 			const tmp = fs.readdirSync('tmp');
-			const manifest = require('./tmp/manifestCustomInput.json');
+			const manifest = readJson('tmp/manifestCustomInput.json');
 			expect(tmp).to.contain(results.manifestCustomInput);
 			expect(manifest).to.be.an('object');
 			expect(manifest).to.have.property('custom/dir/index.js');
 			expect(manifest['custom/dir/index.js']).to.equal('tmp/' + results.sha1);
+		});
+	});
+
+	it('should reuse an existing manifest file', () => {
+		fs.mkdirSync('tmp');
+		fs.writeFileSync('tmp/manifest.json', JSON.stringify({ existing: 'foo' }));
+
+		const res = hashWithOptions({ dest: 'tmp/[hash].js', manifest: 'tmp/manifest.json' });
+		return res.then(() => {
+			const manifest = readJson('tmp/manifest.json');
+			expect(manifest).to.have.property('tmp/index.js');
+			expect(manifest['tmp/index.js']).to.equal('tmp/' + results.sha1);
+			expect(manifest).to.have.property('tmp/index.js');
+			expect(manifest['existing']).to.equal('foo');
 		});
 	});
 
